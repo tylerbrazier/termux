@@ -1,0 +1,72 @@
+#!/bin/bash
+# https://github.com/termux/termux-widget
+# Backup pics of docs, receipts, etc.
+
+cache_dir="${XDG_CACHE_HOME:-"$HOME/.cache"}"
+cache_file="$cache_dir/picup"
+src_dir="$HOME/storage/dcim/Camera"
+
+mkdir -p "$cache_dir"
+touch "$cache_file"
+
+dest_dir="$(head -n1 "$cache_file")"
+dest_dir="${dest_dir:-"$HOME"}"
+
+read -rp "Take the picture and press Enter..."
+
+latest_file="$(find \
+	-L "$src_dir" \
+	-type f \
+	-name '*.jpg' \
+	-printf '%T@ %P\n' \
+	| sort -r \
+	| head -n1 \
+	| awk '{print $2}')"
+
+if [ ! -f "$src_dir/$latest_file" ]; then
+	echo "$latest_file is not a file" >&2
+	exit 1
+fi
+
+while [ -z "$dest" ] || [ -d "$dest" ]; do
+	echo "Move $latest_file to?"
+	echo "(spaces and ext will be fixed)"
+	read -eri "$dest_dir/" dest
+done
+
+# replace all spaces with underscores
+dest="${dest// /_}"
+
+# append extension if missing
+ext="${latest_file##*.}"
+[[ $dest == *.$ext ]] || dest="$dest.$ext"
+
+if [ -e "$dest" ]; then
+	read -p "$dest exists. Continue? " \
+		-eri n
+	[[ $REPLY =~ [Yy].* ]] || exit 1
+fi
+
+read -p 'Compress to? (Empty skips) ' \
+	-eri 5% quality
+
+if [ -n "$quality" ]; then
+	magick "$src_dir/$latest_file" \
+		-quality "$quality" "$dest" \
+		|| exit 1
+else
+	cp "$src_dir/$latest_file" "$dest"
+fi
+
+dirname "$dest" > "$cache_file"
+
+echo "Opening for preview $dest"
+termux-share "$dest"
+
+read -p "Delete original $latest_file? " -eri y
+
+if [[ $REPLY =~ [Yy].* ]]; then
+	rm "$src_dir/$latest_file"
+fi
+
+read -rp 'Press Enter...'
