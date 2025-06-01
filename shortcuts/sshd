@@ -1,0 +1,37 @@
+#!/bin/sh
+# https://github.com/termux/termux-widget
+# https://wiki.termux.com/wiki/Remote_Access
+
+printf "Starting sshd..."
+sshd || exit
+
+user="$(whoami)"
+address="$(ifconfig 2>/dev/null \
+	| grep -A1 wlan0 \
+	| awk '/inet/{print $2}')"
+port=8022
+
+printf "\n\n\t%s@%s\n\n" "$user" "$address"
+printf "ssh -p %s ...\n" "$port"
+printf "scp -P %s -r ...\n" "$port"
+printf "sftp -P %s ...\n" "$port"
+
+fingerprints="$( \
+	cat "$PREFIX"/etc/ssh/ssh_host_*.pub \
+	| ssh-keygen -lf -)"
+
+printf "\nFingerprints:\n%s\n" "$fingerprints"
+
+printf "\nAcquiring wakelock..."
+termux-wake-lock
+
+printf "\nPress Enter to end the process..."
+read -r _
+
+printf "Releasing wakelock..."
+termux-wake-unlock
+
+printf "\nKilling sshd..."
+killall sshd
+
+echo
