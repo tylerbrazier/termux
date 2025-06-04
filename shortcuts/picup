@@ -9,8 +9,8 @@ src_dir="$HOME/storage/dcim/Camera"
 mkdir -p "$cache_dir"
 touch "$cache_file"
 
-dest_dir="$(head -n1 "$cache_file")"
-dest_dir="${dest_dir:-"$HOME"}"
+dest="$(head -n1 "$cache_file")"
+dest="${dest:-"$HOME/"}"
 
 read -rp "Take the picture and press Enter..."
 
@@ -28,10 +28,13 @@ if [ ! -f "$src_dir/$latest_file" ]; then
 	exit 1
 fi
 
-while [ -z "$dest" ] || [ -d "$dest" ]; do
+while true; do
 	echo "Move $latest_file to?"
 	echo "(spaces and ext will be fixed)"
-	read -eri "$dest_dir/" dest
+	read -eri "$dest" dest
+	[ -d "$dest" ] && continue
+	[ -z "$dest" ] && continue
+	break
 done
 
 # replace all spaces with underscores
@@ -58,7 +61,7 @@ else
 	cp "$src_dir/$latest_file" "$dest"
 fi
 
-dirname "$dest" > "$cache_file"
+echo "$dest" > "$cache_file"
 
 echo "Opening for preview $dest"
 termux-share "$dest"
